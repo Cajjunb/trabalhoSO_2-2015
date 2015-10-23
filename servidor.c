@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h> 
+#include <ctime>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
@@ -63,6 +64,7 @@ int main(){
 	int key_msg;
 	int tamanhoLista = 0;	
 	int pid;
+	std::time_t tempoCorrente;
 	
 	signal(SIGALRM,dummy);
 	key_msg = msgget(10,0x1FF);	
@@ -87,9 +89,10 @@ int main(){
 		}	
 		int i ;
 		aux = cabeca;
+		tempoCorrente = std::time(nullptr);
 		if(aux != NULL){
 			for( i = 0; i < tamanhoLista - 1; i++){
-	/*		printf("\n\tProcesso\t%d\t hora %u:%u x %u\t minstamp\t%u\tprox\t=%p\n"
+		/*		printf("\n\tProcesso\t%d\t hora %u:%u x %u\t minstamp\t%u\tprox\t=%p\n"
 								,aux->pid
 								,aux->hora
 								,aux->min
@@ -99,7 +102,7 @@ int main(){
 		*/		if(aux->vezes > 0){
 					kill(aux->pid,SIGSTOP);
 					kill(aux->prox->pid,SIGCONT);
-					alarm(3);		
+					alarm(3);
 				}	
 				aux = aux->prox;	
 			}
