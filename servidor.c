@@ -13,22 +13,23 @@
 
 void insere_lista( t_processo **lista, t_msg *registro){
 	t_processo *novo = (t_processo*)malloc(size_processo);
-	if(*lista == NULL){
+	t_processo *aux = (t_processo*)*lista;
+	if(aux == NULL || aux->minstamp > novo->minstamp ){
 		*lista = novo;
 		(*lista)->vezes = registro->vezes;
 		(*lista)->hora = registro->hora;
 		(*lista)->min = registro->min;
 		(*lista)->minstamp = (registro->hora * 60) + registro->min;
-		strcpy((*lista)->msg,registro->msg);	
+		strcpy((*lista)->msg,registro->msg);
+		if(aux != NULL)
+			(*lista)->prox = aux;
 	}else{	
-
-		t_processo *aux = (t_processo*)*lista;
 		strcpy(novo->msg,registro->msg);
 		novo->vezes = registro->vezes;
 		novo->hora = registro->hora;
 		novo->min = registro->min;
 		novo->minstamp = (registro->hora * 60) + registro->min;
-		while(aux->prox != NULL && (aux->minstamp < novo->minstamp )  ){
+		while(aux->prox->prox != NULL && (aux->prox->minstamp < novo->minstamp )  ){
 			printf("\n\t\aux->minstamp %u",aux->minstamp);
 			aux = aux->prox;
 		}
@@ -39,6 +40,20 @@ void insere_lista( t_processo **lista, t_msg *registro){
 }
 
 void dummy(int signal){}
+
+void imprimeLista(t_processo **cabeca){
+    t_processo *aux = *cabeca;
+    while(aux != NULL){
+		printf("\n\tProcesso\t%d\t hora %u:%u x %u\t minstamp\t%u\n"
+								  ,aux->pid
+								  ,aux->hora
+								  ,aux->min
+								  ,aux->vezes
+								  ,aux->minstamp);
+		aux = aux->prox;		
+	}
+	return;
+}
 
 
 int main(){
@@ -51,44 +66,46 @@ int main(){
 	
 	signal(SIGALRM,dummy);
 	key_msg = msgget(10,0x1FF);	
-	while(msgrcv(key_msg,&msgrecebida,size_msg,0,IPC_NOWAIT) > 0){
-		insere_lista(&cabeca,&msgrecebida);
-	}	
-	aux = cabeca;
-	while(aux != NULL){
-		pid = fork();
-		if(pid == 0 ){
-			if(execl(aux->msg,aux->msg,EComercial, (char*)0) < 0){
-				printf("\nErro no execl! \n");
-				exit(1);
-			}
-		}else{
-			aux->pid = pid;		
-		}		
-		tamanhoLista++;	
-		aux = aux->prox;
-		getchar();
-	
-	}	
-	int i ;
-	printf( "\n\tTamanhoLista\t%d\n" , tamanhoLista);
 	while(1){
+		while(msgrcv(key_msg,&msgrecebida,size_msg,0,IPC_NOWAIT) > 0){
+			insere_lista(&cabeca,&msgrecebida);
+		}	
 		aux = cabeca;
-		for( i = 0; i < tamanhoLista - 1; i++){
-			printf("\n\tProcesso\t%d\t hora %u:%u x %u\t minstamp\t%u\n"
-								  ,aux->pid
-								  ,aux->hora
-								  ,aux->min
-								  ,aux->vezes
-								  ,aux->minstamp);
-			kill(aux->pid,SIGSTOP);
-			kill(aux->prox->pid,SIGCONT);		
+		while(aux != NULL){
+			pid = fork();
+			if(pid == 0 ){
+				if(execl(aux->msg,aux->msg,EComercial, (char*)0) < 0){
+					printf("\nErro no execl! \n");
+					exit(1);
+				}
+			}else{
+				aux->pid = pid;		
+			}		
+			tamanhoLista++;	
 			aux = aux->prox;
-			alarm(3);	
-		}
-		kill(aux->prox->pid,SIGSTOP);
-		kill(cabeca->pid,SIGCONT);		
+		
+		}	
+		int i ;
+		aux = cabeca;
+		if(aux != NULL){
+			for( i = 0; i < tamanhoLista - 1; i++){
+	/*		printf("\n\tProcesso\t%d\t hora %u:%u x %u\t minstamp\t%u\tprox\t=%p\n"
+								,aux->pid
+								,aux->hora
+								,aux->min
+								,aux->vezes
+								,aux->minstamp
+								,aux->prox);
+		*/		if(aux->vezes > 0){
+					kill(aux->pid,SIGSTOP);
+					kill(aux->prox->pid,SIGCONT);
+					alarm(3);		
+				}	
+				aux = aux->prox;	
+			}
+			kill(aux->pid,SIGSTOP);
+			kill(cabeca->pid,SIGCONT);		
+		}	
 	}
-
 	return 0 ;
 }
