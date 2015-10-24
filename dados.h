@@ -25,9 +25,10 @@ typedef struct t_processo{
 	long int mtype;  
 	char msg[300];
 	unsigned int vezes;
+	unsigned int deltaHora;
+	unsigned int deltaMin;
 	unsigned int hora;
 	unsigned int min;
-	unsigned int seg;
 	unsigned int minstamp;
 	unsigned int pid;
 	struct t_processo* prox;
