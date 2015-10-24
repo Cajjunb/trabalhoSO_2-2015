@@ -27,8 +27,8 @@ typedef struct t_processo{
 	unsigned int vezes;
 	unsigned int deltaHora;
 	unsigned int deltaMin;
-	unsigned int hora;
-	unsigned int min;
+	unsigned int horaInsercao;
+	unsigned int minInsercao;
 	unsigned int minstamp;
 	unsigned int pid;
 	struct t_processo* prox;
