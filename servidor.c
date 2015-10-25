@@ -69,7 +69,7 @@ void imprimeLista(t_processo **cabeca){
     	/*debug:*/printf("no imprime lista\n");
     	for (j = 0; j < aux->pid.size(); ++j)
     	{
-			printf("\tProcesso\t%u\t deltaHora %u:%u x %u\t minstamp\t%u\n"
+			printf("\tProcesso\t%d\t deltaHora %u:%u x %u\t minstamp\t%u\n"
 						  ,aux->pid[j]
 						  ,aux->deltaHora
 						  ,aux->deltaMin
@@ -131,16 +131,18 @@ void removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_
 }
 
 
-void retiraProcessosFinalizados(t_processo **cabeca,int tamanhoLista){
+void retiraProcessosFinalizados(t_processo **cabeca,unsigned tamanhoLista){
 	t_processo *aux = *cabeca;
-	int i;
-	int j;  
+	unsigned i;
+	unsigned j;  
+	int wait_pid_status;
 	bool flagRemover = true;
+	printf("V#################VERIFICA SE REMOVE!\n");
 	while(flagRemover){
 		flagRemover = false;
-		for (i = 0; i < tamanhoLista && flagRemover; ++i)
+		for (i = 0; i < tamanhoLista && !flagRemover; ++i)
 		{
-			for (j = 0; j < aux->pid.size() && flagRemover; ++j)
+			for (j = 0; j < aux->pid.size() && !flagRemover; ++j)
 			{
 				if (aux->pid[j] != 0){
 					waitpid(aux->pid[j], &wait_pid_status, WNOHANG);
@@ -287,10 +289,8 @@ int main(){
 
 					}
 					/*debug*/ printf("#############################ALARME!         begin\n");		
-					alarm_return = alarm(10);
+					alarm_return = alarm(1);
 					pause();
-					
-					}
 					/*debug*/ printf("alarm return:%u\n", alarm_return);
 					/*debug*/ printf("#############################ALARME!         end\n");	
 				}

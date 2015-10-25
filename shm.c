@@ -31,9 +31,7 @@ int main(){
 		char *listaAbs2;
 		int shm_key = shmget(10,sizeof(int)*400,0x1FF);
 		listaAbs2= shmat(shm_key,0,0x1FF);
-		listaAbs2[]
-
-
+		listaAbs2 
 
 	}
 
