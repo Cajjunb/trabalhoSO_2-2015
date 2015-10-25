@@ -3,6 +3,7 @@
 
 
 #define MATRICULA 100033571
+#include <vector>
 /*CONSTANTES DE TIPO DE MENSAGEM*/
 typedef enum {
 	Agendamento = 1,
@@ -30,7 +31,8 @@ typedef struct t_processo{
 	unsigned int horaInsercao;
 	unsigned int minInsercao;
 	unsigned int minstamp;
-	unsigned int pid;
+	std::vector <int> pid;
+	bool estaExecutando;
 	struct t_processo* prox;
 } t_processo;
 

@@ -17,29 +17,47 @@ void insere_lista( t_processo **lista, t_msg *registro){
 	t_processo *aux = (t_processo*)*lista;
 	std::time_t tempoCorrente;
 	struct tm * tempoInfo;
+	unsigned int i;
 	
 	time(&tempoCorrente);
 	tempoInfo = localtime(&tempoCorrente); //PEGA O TEMPO ATUAL DE FORMA SEPARADA
 	if(aux == NULL || aux->minstamp > novo->minstamp ){
+		//Insere na cabeca da lista o novo valor
 		*lista = novo;
 		(*lista)->vezes = registro->vezes;
 		(*lista)->deltaHora = registro->hora;
 		(*lista)->deltaMin = registro->min;
 		(*lista)->minstamp = (registro->hora * 60) + registro->min+ (tempoInfo->tm_hour * 60) + tempoInfo->tm_min;
 		strcpy((*lista)->msg,registro->msg);
+		(*lista)->estaExecutando = false ;	
+		(*lista)->estaExecutando = false;
+		for (i = 0; i < registro->vezes; ++i)
+		{
+			(*lista)->pid.push_back(0);
+		}
+		//Concantena a ficha seguinte com o resto da fila
 		if(aux != NULL)
 			(*lista)->prox = aux;
 	}else{	
+		//Atribui para a nova ficha os valores
 		strcpy(novo->msg,registro->msg);
 		novo->vezes = registro->vezes;
 		novo->deltaHora = registro->hora;
 		novo->deltaMin = registro->min;
 		novo->minstamp = (registro->hora * 60) + registro->min + (tempoInfo->tm_hour * 60) + tempoInfo->tm_min;
 		novo->prox = NULL;
-		while(aux->prox->prox != NULL && (aux->prox->minstamp < novo->minstamp )  ){
+		novo->estaExecutando = false;
+		for (i = 0; i < registro->vezes; ++i)
+		{
+			novo->pid.push_back(0);
+		}
+		
+		// Procura o lugar onde colocar a nova ficha
+		while(aux->prox != NULL && (aux->prox->minstamp < novo->minstamp )  ){
 			aux = aux->prox;
 		}
-		novo->prox = aux->prox;
+		// coloca 
+ 		novo->prox = aux->prox;
 		aux->prox = novo;
 	}	
 	return;
@@ -50,15 +68,19 @@ void dummy(int signal){}
 void imprimeLista(t_processo **cabeca){
     t_processo *aux = *cabeca;
     while(aux != NULL){
-		printf("\n\tProcesso\t%d\t deltaHora %u:%u x %u\t minstamp\t%u\n"
-								  ,aux->pid
-								  ,aux->deltaHora
-								  ,aux->deltaMin
-								  ,aux->vezes
-								  ,aux->minstamp);
+    	if (aux->pid.size() > 0)
+    	{
+			printf("\n\tProcesso\t%u\t deltaHora %u:%u x %u\t minstamp\t%u\n"
+						  ,aux->pid.back()
+						  ,aux->deltaHora
+						  ,aux->deltaMin
+						  ,aux->vezes
+						  ,aux->minstamp);
+
+    	}
 		aux = aux->prox;	
 	}
-	getchar();
+	// getchar();
 	return;
 }
 
@@ -72,6 +94,8 @@ int main(){
 	int key_msg;
 	int tamanhoLista;	
 	int ppid;					// Parent Process ID
+	int i;
+	unsigned int j;
 	
 	signal(SIGALRM,dummy);				//ROTINA DE SIGNAL_ALRM
 	key_msg = msgget(10,0x1FF);			//CRIAR FILA DE MSG
@@ -83,51 +107,59 @@ int main(){
 		tamanhoLista = 0;
 		while(aux != NULL){
 			time(&tempoCorrente);
-// 			tempoInfo = localtime(&tempoCorrente); 					//PEGA O TEMPO ATUAL DE FORMA SEPARADA
+			tempoInfo = localtime(&tempoCorrente); 					//PEGA O TEMPO ATUAL DE FORMA SEPARADA
 			if( aux->minstamp == (unsigned) ((tempoInfo->tm_hour*60) + tempoInfo->tm_min) && aux->vezes > 0  ){
 				printf("\n\tHORA DE EXECUTAR UM PROCESSO!\n");
 				ppid = fork();
-				k
-				printf("\n\tppid = %d \n",pid);
+				printf("\n\tppid = %d \n",ppid);
 				if(ppid == 0){	
+					printf("end1\n");
 					if(execl(aux->msg,aux->msg,EComercial, (char*)0) < 0){
 						printf("\nErro no execl! \n");
 						exit(1);
 					}
 				}else{
+					printf("end2\n");
 					aux->vezes--;		
 					aux->minstamp = ((tempoInfo->tm_hour*60) + tempoInfo->tm_min) + aux->deltaHora*60 + aux->deltaMin  ; //ATUALIZAR A PROX VEZ
-					aux->pid = ppid;
-					printf("\n\telse aux->pid = %u \n",aux->pid);
+					aux->pid.push_back( ppid) ;
+					printf("\n\telse aux->pid = %u \n",aux->pid.back());
 				}
+				printf("end\n");
 			}
 			tamanhoLista++;	
 			aux = aux->prox;
 			printf("\n\twhile(aux != NULL)FINAL\n");
 		}
+		
+		
+		
 		printf("\n\tSAI DO LOOP DE EXEC\n");
 		imprimeLista(&cabeca);
-		int i ;
+		printf("logo apos imprimir lista\n");
+		
 		aux = cabeca;
 		if(aux != NULL){
-			for( i = 0; i < tamanhoLista - 1; i++){
-				printf("\n\tProcesso\t%d\t deltaHora %u:%u x %u\t minstamp\t%u\tprox\t=%p\n"
-								,aux->pid
-								,aux->deltaHora
-								,aux->deltaMin
-								,aux->vezes
-								,aux->minstamp
-								,aux->prox);
-				if(aux->vezes > 0 ){
-					kill(aux->pid,SIGSTOP);
-					kill(aux->prox->pid,SIGCONT);
+			for( i = 0; i < tamanhoLista - 1; i++)
+			{
+				for (j = 0; j < aux->pid.size(); ++j)
+				{
+					printf("\n\tProcesso\t%d\t deltaHora %u:%u x %u\t minstamp\t%u\tprox\t=%p\n"
+									,aux->pid[j]
+									,aux->deltaHora
+									,aux->deltaMin
+									,aux->vezes
+									,aux->minstamp
+									,aux->prox);
+					
+					if(aux->vezes > 0 && (aux->pid[j] != 0) ){
+						kill(aux->pid.back(),SIGSTOP);
+					}		
 					alarm(3);
-				}		
+				}
 				if(aux->prox != NULL)
 					aux = aux->prox;
-			}
-			kill(aux->pid,SIGSTOP);
-			kill(cabeca->pid,SIGCONT);		
+			}	
 		}	
 	}
 	return 0 ;
