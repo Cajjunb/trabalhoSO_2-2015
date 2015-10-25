@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h> 
+#include <sys/shm.h>
 #include <ctime>
 #include <errno.h>
 #include <sys/types.h>
@@ -10,6 +11,7 @@
 #include <sys/msg.h>
 #include <signal.h>
 #include "dados.h"
+#include <sys/wait.h>
 
 
 void insere_lista( t_processo **lista, t_msg *registro){
@@ -21,7 +23,7 @@ void insere_lista( t_processo **lista, t_msg *registro){
 	
 	time(&tempoCorrente);
 	tempoInfo = localtime(&tempoCorrente); //PEGA O TEMPO ATUAL DE FORMA SEPARADA
-	if(aux == NULL || aux->minstamp > novo->minstamp ){
+	if(aux == NULL ){
 		//Insere na cabeca da lista o novo valor
 		*lista = novo;
 		(*lista)->vezes = registro->vezes;
@@ -35,9 +37,6 @@ void insere_lista( t_processo **lista, t_msg *registro){
 		{
 			(*lista)->pid.push_back(0);
 		}
-		//Concantena a ficha seguinte com o resto da fila
-		if(aux != NULL)
-			(*lista)->prox = aux;
 	}else{	
 		//Atribui para a nova ficha os valores
 		strcpy(novo->msg,registro->msg);
@@ -53,7 +52,7 @@ void insere_lista( t_processo **lista, t_msg *registro){
 		}
 		
 		// Procura o lugar onde colocar a nova ficha
-		while(aux->prox != NULL && (aux->prox->minstamp < novo->minstamp )  ){
+		while(aux->prox != NULL ){
 			aux = aux->prox;
 		}
 		// coloca 
@@ -69,7 +68,7 @@ void imprimeLista(t_processo **cabeca){
     t_processo *aux = *cabeca;
     unsigned int j = 0;
     while(aux != NULL){
-    	for (j = 0; j < count; ++j)
+    	for (j = 0; j < aux->pid.size(); ++j)
     	{
 			printf("\tProcesso\t%u\t deltaHora %u:%u x %u\t minstamp\t%u\n"
 						  ,aux->pid[j]
@@ -85,6 +84,24 @@ void imprimeLista(t_processo **cabeca){
 	return;
 }
 
+// Funcao que remove a ficha da lista de processos na posicao int posicao
+void removerLista(t_processo **lista,int posicao){
+	t_processo *aux  *lista;
+	int i;
+	if(posicao !=1){
+		//loop que vai para a posicao necessaria
+		for(*aux = *lista, i = 0; i < posicao && aux->prox != NULL ; i++,aux = aux->prox){}
+		//remove
+		aux-prox = aux-prox->prox;
+	}
+	else{
+		// cabeca da lista eh agora outro
+		*lista = aux-prox;
+	}
+	return;
+}
+
+
 /* PROGRAMA QUE VERIFICA A FILA DE MSGS, E TRATA A REQUISICAO!*/
 int main(){
 	t_processo *cabeca = NULL;
@@ -98,6 +115,9 @@ int main(){
 	int i;
 	unsigned int j;
 	int w;
+	unsigned alarm_return = 0;
+	int wait_pid_status = -1;
+	unsigned int debug_var;
 	
 	signal(SIGALRM,dummy);				//ROTINA DE SIGNAL_ALRM
 	key_msg = msgget(10,0x1FF);			//CRIAR FILA DE MSG
@@ -111,18 +131,21 @@ int main(){
 		while(aux != NULL){
 			time(&tempoCorrente);
 			tempoInfo = localtime(&tempoCorrente); 					//PEGA O TEMPO ATUAL DE FORMA SEPARADA
-			if( aux->minstamp == (unsigned) ((tempoInfo->tm_hour*60) + tempoInfo->tm_min) && aux->vezes > 0  ){
+			debug_var = (unsigned) ((tempoInfo->tm_hour*60) + tempoInfo->tm_min);
+			printf("_____________________aux->minstamp=%u, debug_var=%u, vezes = %d\n", aux->minstamp, debug_var, aux->vezes );
+			if( aux->minstamp <= (unsigned) ((tempoInfo->tm_hour*60) + tempoInfo->tm_min) && aux->vezes > 0  ){
 				printf("\tHORA DE EXECUTAR UM PROCESSO!\n");
 				ppid = fork();
 				// /*debug*/ printf("\tppid = %d \n",ppid);
 				if(ppid == 0){	
 					// /*debug*/ printf("end1\n");
+					kill(getpid(),SIGSTOP);
 					if(execl(aux->msg,aux->msg,EComercial, (char*)0) < 0){
 						printf("Erro no execl! \n");
 						exit(1);
 					}
 				}else{
-					// /*debug*/ printf("end2\n");
+					/*debug*/ printf("end222222222222222222222222222222222222222222222222222\n");
 					aux->vezes--;		
 					aux->minstamp = ((tempoInfo->tm_hour*60) + tempoInfo->tm_min) + aux->deltaHora*60 + aux->deltaMin  ; //ATUALIZAR A PROX VEZ
 					
@@ -147,13 +170,14 @@ int main(){
 		imprimeLista(&cabeca);
 		// /*debug*/ printf("logo apos imprimir lista\n");
 		
+		// round robin:
 		aux = cabeca;
 		if(aux != NULL)
 		{
-			printf("aux eh diferente de null!\n");
-			for( i = 0; i < tamanhoLista - 1; i++)
+			// /*debug*/ printf("aux eh diferente de null!\n");
+			for( i = 0; i < tamanhoLista; i++)
 			{
-				printf("i=%d, aux->pid.size()=%u\n", i, aux->pid.size());
+				/*debug*/ printf("i=%d, aux->pid.size()=%lu\n", i, aux->pid.size());
 				for (j = 0; j < aux->pid.size(); ++j)
 				{
 					// printf("\tProcesso\t%d\t deltaHora %u:%u x %u\t minstamp\t%u\tprox\t=%p\n"
@@ -166,25 +190,62 @@ int main(){
 					
 					if(aux->pid[j] != 0)
 					{
-						/*debug*/ printf("1 mandei sigstop para aux pid[%u]=%d\n", j, aux->pid[j]);
+						/*debug*/ printf("1");
+						/*debug*/ printf("@@@@@@@@@@@@@@@@1 mandei sigstop para aux pid[%u]=%d\n", j, aux->pid[j]);
 						kill(aux->pid[j],SIGSTOP);
+
+						while(aux->pid[j+1] == 0 && j < aux->pid.size() - 1)
+						{
+							j++;
+						}
 
 						//se ainda tenho pids na lista atual de processos filhos
 						if ( j < aux->pid.size() - 1)
 						{
-							/*debug*/ printf("2 (if) - mandei SIGCONT para aux pid[%u]=%d\n", j+1, aux->pid[j+1]);
+							/*debug*/ printf("2");
+							/*debug*/ printf("@@@@@@@@@@@@@@@@2 (if) - mandei SIGCONT para aux pid[%u]=%d\n", j+1, aux->pid[j+1]);
+							kill(aux->pid[j+1],SIGCONT);
+							kill(aux->pid[j+1],SIGCONT);
+							kill(aux->pid[j+1],SIGCONT);
+							kill(aux->pid[j+1],SIGCONT);
+							kill(aux->pid[j+1],SIGCONT);
+							kill(aux->pid[j+1],SIGCONT);
+							kill(aux->pid[j+1],SIGCONT);
+							kill(aux->pid[j+1],SIGCONT);
+							kill(aux->pid[j+1],SIGCONT);
+							kill(aux->pid[j+1],SIGCONT);
 							kill(aux->pid[j+1],SIGCONT);
 						}
 						else	
 						{
-							/*debug*/ printf("3 (else)mandei SIGCONT para aux prox pid[0]=%d\n", aux->prox->pid[0]);
-							// primeiro do vetor seguinte. o processo que está na proxima ficah do vetor
-							kill(aux->prox->pid[0],SIGCONT);
+							if (aux->prox != NULL && aux->prox->pid[0] != 0)
+							{
+								/*debug*/ printf("3");
+								/*debug*/ printf("@@@@@@@@@@@@@@@@3 (else if)mandei SIGCONT para aux prox pid[0]=%d\n", aux->prox->pid[0]);
+								// primeiro do vetor seguinte. o processo que está na proxima ficah do vetor
+								kill(aux->prox->pid[0],SIGCONT);
+							}
+							// se entra no else eh porque chegou ao final, entao voltamos a dar um cont pra cabeca
+							else
+							{
+								/*debug*/ printf("4");
+								/*debug*/ printf("@@@@@@@@@@@@@@@@4 (else else)mandei SIGCONT para cabeca pid[0]=%d\n", cabeca->pid[0]);
+								// primeiro do vetor seguinte. o processo que está na proxima ficah do vetor
+								kill(cabeca->pid[0],SIGCONT);
+							}
 						}
 
-					}		
-					alarm(3);
+					}
+					printf("#############################ALARME!         begin\n");		
+					alarm_return = alarm(10);
+					pause();
+					waitpid(aux->pid[j], &wait_pid_status, 1);
+					printf("alarm return:%u\n", alarm_return);
+					printf("->>>>>>>>>>>>>>>%d\n", wait_pid_status);
+					printf("#############################ALARME!         end\n");	
 				}
+
+
 				if(aux->prox != NULL)
 					aux = aux->prox;
 			}	
