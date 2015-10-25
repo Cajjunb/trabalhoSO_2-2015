@@ -102,6 +102,9 @@ void removerLista(t_processo **lista,int posicao){
 }
 
 
+
+
+
 /* PROGRAMA QUE VERIFICA A FILA DE MSGS, E TRATA A REQUISICAO!*/
 int main(){
 	t_processo *cabeca = NULL;
@@ -169,7 +172,6 @@ int main(){
 		// /*debug*/ printf("\tSAI DO LOOP DE EXEC\n");
 		imprimeLista(&cabeca);
 		// /*debug*/ printf("logo apos imprimir lista\n");
-		
 		// round robin:
 		aux = cabeca;
 		if(aux != NULL)
@@ -205,16 +207,6 @@ int main(){
 							/*debug*/ printf("2");
 							/*debug*/ printf("@@@@@@@@@@@@@@@@2 (if) - mandei SIGCONT para aux pid[%u]=%d\n", j+1, aux->pid[j+1]);
 							kill(aux->pid[j+1],SIGCONT);
-							kill(aux->pid[j+1],SIGCONT);
-							kill(aux->pid[j+1],SIGCONT);
-							kill(aux->pid[j+1],SIGCONT);
-							kill(aux->pid[j+1],SIGCONT);
-							kill(aux->pid[j+1],SIGCONT);
-							kill(aux->pid[j+1],SIGCONT);
-							kill(aux->pid[j+1],SIGCONT);
-							kill(aux->pid[j+1],SIGCONT);
-							kill(aux->pid[j+1],SIGCONT);
-							kill(aux->pid[j+1],SIGCONT);
 						}
 						else	
 						{
@@ -240,6 +232,10 @@ int main(){
 					alarm_return = alarm(10);
 					pause();
 					waitpid(aux->pid[j], &wait_pid_status, 1);
+					// Se um processo filho i terminou retira da lista
+					if(wait_pid_status == 0){
+						removerLista(&cabeca,i);
+					}
 					printf("alarm return:%u\n", alarm_return);
 					printf("->>>>>>>>>>>>>>>%d\n", wait_pid_status);
 					printf("#############################ALARME!         end\n");	
