@@ -31,8 +31,7 @@ void insere_lista( t_processo **lista, t_msg *registro){
 		(*lista)->deltaMin = registro->min;
 		(*lista)->minstamp = (registro->hora * 60) + registro->min+ (tempoInfo->tm_hour * 60) + tempoInfo->tm_min;
 		strcpy((*lista)->msg,registro->msg);
-		(*lista)->estaExecutando = false ;	
-		(*lista)->estaExecutando = false;
+		(*lista)->prox = NULL;
 		for (i = 0; i < registro->vezes; ++i)
 		{
 			(*lista)->pid.push_back(0);
@@ -45,7 +44,6 @@ void insere_lista( t_processo **lista, t_msg *registro){
 		novo->deltaMin = registro->min;
 		novo->minstamp = (registro->hora * 60) + registro->min + (tempoInfo->tm_hour * 60) + tempoInfo->tm_min;
 		novo->prox = NULL;
-		novo->estaExecutando = false;
 		for (i = 0; i < registro->vezes; ++i)
 		{
 			novo->pid.push_back(0);
@@ -68,6 +66,7 @@ void imprimeLista(t_processo **cabeca){
     t_processo *aux = *cabeca;
     unsigned int j = 0;
     while(aux != NULL){
+    	/*debug:*/printf("no imprime lista\n");
     	for (j = 0; j < aux->pid.size(); ++j)
     	{
 			printf("\tProcesso\t%u\t deltaHora %u:%u x %u\t minstamp\t%u\n"
@@ -85,19 +84,49 @@ void imprimeLista(t_processo **cabeca){
 }
 
 // Funcao que remove a ficha da lista de processos na posicao int posicao
-void removerLista(t_processo **lista,int posicao){
-	t_processo *aux  *lista;
+void removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_no_vetor){
+	t_processo *aux = *lista;
 	int i;
-	if(posicao !=1){
+	/*debug:*/printf("no removerlista\n");
+
+	if(numero_da_lista != 0){
+		/*debug:*/printf("no if do remover\n");
 		//loop que vai para a posicao necessaria
-		for(*aux = *lista, i = 0; i < posicao && aux->prox != NULL ; i++,aux = aux->prox){}
-		//remove
-		aux-prox = aux-prox->prox;
+		for(aux = *lista, i = 0; i < numero_da_lista && aux->prox != NULL ; i++,aux = aux->prox){
+			printf("for remover lista i =%d\n", i);
+		}
+		
+		// se for a ultima posicao, re
+		if (posicao_no_vetor == aux->pid.size() - 1 )
+		{
+			/*debug*/ printf("if if\n");
+			//remove
+			aux->prox = aux->prox->prox;
+
+		}
+		else
+		{
+			/*debug*/  printf("if else\n");
+			aux->pid[posicao_no_vetor] = -1;
+		}
+		
 	}
 	else{
-		// cabeca da lista eh agora outro
-		*lista = aux-prox;
+		/*debug:*/printf("no else do remover\n");
+
+		if (posicao_no_vetor == aux->pid.size() - 1 )
+		{
+			/*debug*/  printf("else if\n");
+			// cabeca da lista eh agora outro
+			*lista = aux->prox;
+		}
+		else
+		{
+			/*debug*/ printf("else else\n");
+			aux->pid[posicao_no_vetor] = -1;
+		}
 	}
+	printf("removi!\n");
 	return;
 }
 
@@ -189,6 +218,7 @@ int main(){
 					// 				,aux->vezes
 					// 				,aux->minstamp
 					// 				,aux->prox);
+					printf("!\n");
 					
 					if(aux->pid[j] != 0)
 					{
@@ -196,8 +226,9 @@ int main(){
 						/*debug*/ printf("@@@@@@@@@@@@@@@@1 mandei sigstop para aux pid[%u]=%d\n", j, aux->pid[j]);
 						kill(aux->pid[j],SIGSTOP);
 
-						while(aux->pid[j+1] == 0 && j < aux->pid.size() - 1)
+						while(aux->pid[j+1] <= 0 && j < aux->pid.size() - 1)
 						{
+							printf("while de pular coisas com j=%d\n", j);
 							j++;
 						}
 
@@ -228,17 +259,22 @@ int main(){
 						}
 
 					}
-					printf("#############################ALARME!         begin\n");		
+					/*debug*/ printf("#############################ALARME!         begin\n");		
 					alarm_return = alarm(10);
 					pause();
-					waitpid(aux->pid[j], &wait_pid_status, 1);
-					// Se um processo filho i terminou retira da lista
-					if(wait_pid_status == 0){
-						removerLista(&cabeca,i);
+					if (aux->pid[j] != 0)
+					{
+						waitpid(aux->pid[j], &wait_pid_status, WNOHANG);
 					}
-					printf("alarm return:%u\n", alarm_return);
-					printf("->>>>>>>>>>>>>>>%d\n", wait_pid_status);
-					printf("#############################ALARME!         end\n");	
+					// Se um processo filho i terminou retira da lista
+					/*debug*/ printf("->>>>>>>>>>>>>>>%d\n", wait_pid_status);
+					if(wait_pid_status == 0){
+						/*debug*/ printf("chamando a remover lista com i=%d, j=%u, do aux->pid[j] = %d\n", i,j, aux->pid[j] );
+						removerLista(&cabeca, i, j);
+						wait_pid_status = -1;
+					}
+					/*debug*/ printf("alarm return:%u\n", alarm_return);
+					/*debug*/ printf("#############################ALARME!         end\n");	
 				}
 
 

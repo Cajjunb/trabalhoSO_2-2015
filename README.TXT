@@ -27,7 +27,7 @@ compilação e execução:
 gcc -Wall print.c -o print;
 
 
-killall print;killall servidor;clear; g++ -Wall servidor.c -o servidor; ./executa_postergado ./print 0 0 1; ./executa_postergado ./print 0 1 1; ./servidor
+killall print;killall servidor;clear;gcc -Wall print.c -o print; g++ -Wall servidor.c -o servidor;./executa_postergado ./print 0 0 1; ./executa_postergado ./print 0 1 3; ./executa_postergado ./print 0 1 2; ./servidor
 
 
 
