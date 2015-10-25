@@ -84,9 +84,10 @@ void imprimeLista(t_processo **cabeca){
 }
 
 // Funcao que remove a ficha da lista de processos na posicao int posicao
-void removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_no_vetor){
+int removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_no_vetor){
 	t_processo *aux = *lista;
 	int i;
+	int retorno = 0;
 	/*debug:*/printf("no removerlista\n");
 
 	if(numero_da_lista != 0){
@@ -102,7 +103,7 @@ void removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_
 			/*debug*/ printf("if if\n");
 			//remove
 			aux->prox = aux->prox->prox;
-
+			retorno++;
 		}
 		else
 		{
@@ -119,6 +120,7 @@ void removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_
 			/*debug*/  printf("else if\n");
 			// cabeca da lista eh agora outro
 			*lista = aux->prox;
+			retorno++;			
 		}
 		else
 		{
@@ -127,7 +129,7 @@ void removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_
 		}
 	}
 	printf("removi!\n");
-	return;
+	return retorno;
 }
 
 
@@ -137,7 +139,7 @@ void retiraProcessosFinalizados(t_processo **cabeca,unsigned tamanhoLista){
 	unsigned j;  
 	int wait_pid_status;
 	bool flagRemover = true;
-	printf("V#################VERIFICA SE REMOVE!\n");
+	/*debug*/printf("V#################VERIFICA SE REMOVE!\n");
 	while(flagRemover){
 		flagRemover = false;
 		for (i = 0; i < tamanhoLista && !flagRemover; ++i)
@@ -150,8 +152,8 @@ void retiraProcessosFinalizados(t_processo **cabeca,unsigned tamanhoLista){
 				// Se um processo filho i terminou retira da lista
 				/*debug*/ printf("->>>>>>>>>>>>>>>%d\n", wait_pid_status);
 				if(wait_pid_status == 0){
-					/*debug*/ printf("chamando a remover lista com i=%d, j=%u, do aux->pid[j] = %d\n", i,j, aux->pid[j] );
-					removerLista(cabeca, i, j);	
+					/*debug*/ printf("chamando a remover lista com i=%u, j=%u, do aux->pid[j] = %d\n", i,j, aux->pid[j] );
+					tamanhoLista -= removerLista(cabeca, i, j);	
 					flagRemover = true;
 				}	
 			}
