@@ -131,6 +131,33 @@ void removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_
 }
 
 
+void retiraProcessosFinalizados(t_processo **cabeca,int tamanhoLista){
+	t_processo *aux = *cabeca;
+	int i;
+	int j;  
+	bool flagRemover = true;
+	while(flagRemover){
+		flagRemover = false;
+		for (i = 0; i < tamanhoLista && flagRemover; ++i)
+		{
+			for (j = 0; j < aux->pid.size() && flagRemover; ++j)
+			{
+				if (aux->pid[j] != 0){
+					waitpid(aux->pid[j], &wait_pid_status, WNOHANG);
+				}
+				// Se um processo filho i terminou retira da lista
+				/*debug*/ printf("->>>>>>>>>>>>>>>%d\n", wait_pid_status);
+				if(wait_pid_status == 0){
+					/*debug*/ printf("chamando a remover lista com i=%d, j=%u, do aux->pid[j] = %d\n", i,j, aux->pid[j] );
+					removerLista(cabeca, i, j);	
+					flagRemover = true;
+				}	
+			}
+		}
+	}
+	return ;
+}
+
 
 
 
@@ -262,16 +289,7 @@ int main(){
 					/*debug*/ printf("#############################ALARME!         begin\n");		
 					alarm_return = alarm(10);
 					pause();
-					if (aux->pid[j] != 0)
-					{
-						waitpid(aux->pid[j], &wait_pid_status, WNOHANG);
-					}
-					// Se um processo filho i terminou retira da lista
-					/*debug*/ printf("->>>>>>>>>>>>>>>%d\n", wait_pid_status);
-					if(wait_pid_status == 0){
-						/*debug*/ printf("chamando a remover lista com i=%d, j=%u, do aux->pid[j] = %d\n", i,j, aux->pid[j] );
-						removerLista(&cabeca, i, j);
-						wait_pid_status = -1;
+					
 					}
 					/*debug*/ printf("alarm return:%u\n", alarm_return);
 					/*debug*/ printf("#############################ALARME!         end\n");	
@@ -280,7 +298,10 @@ int main(){
 
 				if(aux->prox != NULL)
 					aux = aux->prox;
-			}	
+			}
+			//FAZ VERIFICACAO SE RETIRA PROCESSOS!
+			retiraProcessosFinalizados(&cabeca, tamanhoLista);
+	
 		}	
 	}
 	return 0 ;
