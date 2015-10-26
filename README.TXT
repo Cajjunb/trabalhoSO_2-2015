@@ -24,11 +24,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 compilação e execução:
 
+
+killall -9 print;killall -9 servidor;clear;g++ -Wall remove_postergado.c -o remove_postergado;g++ -Wall shutdown_postergado.c -o shutdown_postergado;g++ -Wall executa_postergado.c -o executa_postergado ;gcc -Wall print.c -o print; g++ -Wall servidor.c -o servidor;./executa_postergado ./print 0 0 1; ./executa_postergado ./print 0 1 3; ./executa_postergado ./print 0 1 2;./servidor
+
+
+COMANDO DE REMOVER JOB
+./remove_postergado jobID
+
+
 gcc -Wall print.c -o print;
-
-
-killall -9 print;killall -9 servidor;clear;gcc -Wall print.c -o print; g++ -Wall servidor.c -o servidor;./executa_postergado ./print 0 0 1; ./executa_postergado ./print 0 1 2; ./executa_postergado ./print 0 1 2; ./servidor
-
 
 
 util: 

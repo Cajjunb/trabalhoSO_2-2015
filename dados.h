@@ -6,6 +6,7 @@
 #define QUANTUM 2
 #define TIPOAGENDAMENTO 1
 #define TIPOCANCELAMENTO 2
+#define TIPOKILLSERVER 3
 #include <vector>
 /*CONSTANTES DE TIPO DE MENSAGEM*/
 typedef enum {
@@ -18,6 +19,7 @@ typedef enum {
 removedor e etc*/
 typedef struct{
 	long int mtype;  
+	long int jobId;
 	char executavel[300];
 	unsigned int vezes;
 	unsigned int hora;
@@ -40,6 +42,7 @@ typedef struct t_processo{
 } t_processo;
 
 typedef struct t_estatisticaProcesso{
+	long int jobId;  
 	bool interrompido;
 	char executavel[300];
 	unsigned int vezes;

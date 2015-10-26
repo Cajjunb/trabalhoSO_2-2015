@@ -26,12 +26,12 @@ int main(int argc, char *argv[]){
 		printf("\n\t Argumento invalido");
 		exit(1);
 	}
-	msg1.mtype = 1;
-	strcpy(msg1.msg,argv[1]);	
-	msg1.deltaHora = atoi(argv[2]);
-	msg1.deltaMin = atoi(argv[3]);
+	msg1.mtype = TIPOAGENDAMENTO;
+	strcpy(msg1.executavel,argv[1]);	
+	msg1.hora = atoi(argv[2]);
+	msg1.min = atoi(argv[3]);
 	msg1.vezes = atoi(argv[4]);
-	printf("\n\tMSG = %s",msg1.msg);
+	printf("\n\tMSG = %s",msg1.executavel);
 	printf("\n\thoras = %d",msg1.hora);
 	printf("\n\tmin = %d",msg1.min);
 	printf("\n\tvezs = %d\n",msg1.vezes);
