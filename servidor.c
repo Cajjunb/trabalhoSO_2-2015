@@ -84,9 +84,10 @@ void imprimeLista(t_processo **cabeca){
 }
 
 // Funcao que remove a ficha da lista de processos na posicao int posicao
-void removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_no_vetor){
+int removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_no_vetor){
 	t_processo *aux = *lista;
 	int i;
+	int retorno = 0;
 	/*debug:*/printf("no removerlista\n");
 
 	if(numero_da_lista != 0){
@@ -102,6 +103,7 @@ void removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_
 			/*debug*/ printf("if if\n");
 			//remove
 			aux->prox = aux->prox->prox;
+			retorno++;
 
 		}
 		else
@@ -119,6 +121,8 @@ void removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_
 			/*debug*/  printf("else if\n");
 			// cabeca da lista eh agora outro
 			*lista = aux->prox;
+			retorno++;
+
 		}
 		else
 		{
@@ -127,7 +131,7 @@ void removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_
 		}
 	}
 	printf("removi!\n");
-	return;
+	return retorno;
 }
 
 
@@ -135,15 +139,16 @@ void retiraProcessosFinalizados(t_processo **cabeca,unsigned tamanhoLista){
 	t_processo *aux = *cabeca;
 	unsigned i;
 	unsigned j;  
-	int wait_pid_status;
+	int wait_pid_status = -1;
 	bool flagRemover = true;
 	printf("V#################VERIFICA SE REMOVE!\n");
 	while(flagRemover){
 		flagRemover = false;
-		for (i = 0; i < tamanhoLista && !flagRemover; ++i)
+		for (i = 0; i < tamanhoLista && !flagRemover; ++i,aux= aux->prox)
 		{
 			for (j = 0; j < aux->pid.size() && !flagRemover; ++j)
 			{
+				printf("\t______________________i = %d\tj=%d\n",i,j );
 				if (aux->pid[j] != 0){
 					waitpid(aux->pid[j], &wait_pid_status, WNOHANG);
 				}
@@ -151,12 +156,16 @@ void retiraProcessosFinalizados(t_processo **cabeca,unsigned tamanhoLista){
 				/*debug*/ printf("->>>>>>>>>>>>>>>%d\n", wait_pid_status);
 				if(wait_pid_status == 0){
 					/*debug*/ printf("chamando a remover lista com i=%d, j=%u, do aux->pid[j] = %d\n", i,j, aux->pid[j] );
-					removerLista(cabeca, i, j);	
+					tamanhoLista -=removerLista(cabeca, i, j);	
 					flagRemover = true;
+					wait_pid_status = -1;
 				}	
 			}
 		}
+		printf("\tFINAL DOS FORS FLAG = %d\ttamanhoLista\t%d\n",flagRemover,tamanhoLista);
+		imprimeLista(cabeca);
 	}
+	printf("\tACABOU A VERIFICACAO\n");
 	return ;
 }
 
@@ -289,7 +298,7 @@ int main(){
 
 					}
 					/*debug*/ printf("#############################ALARME!         begin\n");		
-					alarm_return = alarm(1);
+					alarm_return = alarm(2);
 					pause();
 					/*debug*/ printf("alarm return:%u\n", alarm_return);
 					/*debug*/ printf("#############################ALARME!         end\n");	
