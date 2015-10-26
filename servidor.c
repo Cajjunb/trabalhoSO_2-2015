@@ -14,7 +14,7 @@
 #include <sys/wait.h>
 
 
-void insere_lista( t_processo **lista, t_msg *registro){
+void insereListaProcesso( t_processo **lista, t_msg *registro){
 	t_processo *novo = (t_processo*)malloc(size_processo);
 	t_processo *aux = (t_processo*)*lista;
 	std::time_t tempoCorrente;
@@ -26,11 +26,12 @@ void insere_lista( t_processo **lista, t_msg *registro){
 	if(aux == NULL ){
 		//Insere na cabeca da lista o novo valor
 		*lista = novo;
+		(*lista)->jobId =  0 ;
 		(*lista)->vezes = registro->vezes;
 		(*lista)->deltaHora = registro->hora;
 		(*lista)->deltaMin = registro->min;
 		(*lista)->minstamp = (registro->hora * 60) + registro->min+ (tempoInfo->tm_hour * 60) + tempoInfo->tm_min;
-		strcpy((*lista)->msg,registro->msg);
+		strcpy((*lista)->executavel,registro->executavel);
 		(*lista)->prox = NULL;
 		for (i = 0; i < registro->vezes; ++i)
 		{
@@ -38,7 +39,7 @@ void insere_lista( t_processo **lista, t_msg *registro){
 		}
 	}else{	
 		//Atribui para a nova ficha os valores
-		strcpy(novo->msg,registro->msg);
+		strcpy(novo->executavel,registro->executavel);
 		novo->vezes = registro->vezes;
 		novo->deltaHora = registro->hora;
 		novo->deltaMin = registro->min;
@@ -48,7 +49,57 @@ void insere_lista( t_processo **lista, t_msg *registro){
 		{
 			novo->pid.push_back(0);
 		}
+		//Reinicia o contador
+		i = 0;
+		// Procura o lugar onde colocar a nova ficha
+		while(aux->prox != NULL ){
+			aux = aux->prox;
+			i++;
+		}
+		//Coloca o id do job
+		novo->jobId = i;
+		// coloca 
+ 		novo->prox = aux->prox;
+		aux->prox = novo;
+	}	
+	return;
+}
+
+
+void insereListaEstatistica( t_estatisticaProcesso **lista, t_processo *registro){
+	t_estatisticaProcesso *novo = (t_estatisticaProcesso*)malloc(size_estatistica);
+	t_estatisticaProcesso *aux = (t_estatisticaProcesso*)*lista;
+	std::time_t tempoCorrente;
+	struct tm * tempoInfo;
+	unsigned int i;
+
+	/*debug*/printf("\tINSERINDO ESTATISTISCA###############\n");
+	time(&tempoCorrente);
+	tempoInfo = localtime(&tempoCorrente); //PEGA O TEMPO ATUAL DE FORMA SEPARADA
+	if(aux == NULL ){
+		/*debug*/printf("\tIF ESTAT\n");
+		//Insere na cabeca da lista o novo valor
+		*lista = novo;
+		(*lista)->vezes = registro->pid.size();
+		(*lista)->hora = registro->horaInsercao;
+		(*lista)->min = registro->minInsercao;
+		strcpy((*lista)->executavel,registro->executavel);
+		(*lista)->prox = NULL;
+		//CONTAR QUANTOS VEZES FORAM EXECUTADAS
+		for (i = 0; registro->pid[i] < 0 && i < registro->pid.size(); ++i){}
+		(*lista)->nroProcessosExecutados = i ;
 		
+	}else{	
+		/*debug*/printf("\tELSE ESTAT\n");
+		//Atribui para a nova ficha os valores
+		strcpy(novo->executavel,registro->executavel);
+		novo->vezes = registro->pid.size();
+		novo->hora = registro->horaInsercao;
+		novo->min = registro->minInsercao;
+		novo->prox = NULL;
+		//CONTAR QUANTOS VEZES FORAM EXECUTADAS
+		for (i = 0; registro->pid[i] < 0 && i < registro->pid.size(); ++i){}
+		novo->nroProcessosExecutados = i ;
 		// Procura o lugar onde colocar a nova ficha
 		while(aux->prox != NULL ){
 			aux = aux->prox;
@@ -57,6 +108,10 @@ void insere_lista( t_processo **lista, t_msg *registro){
  		novo->prox = aux->prox;
 		aux->prox = novo;
 	}	
+	for (i; registro->pid[i] >= 0 && i < registro->pid.size(); ++i){
+		printf("\tSERVER MESSAGE\tO PROCESSO jobID\t%lu\texec=%s\tNAO SERA EXECUTADO!CANCELADO\n",registro->jobId,registro->executavel);
+	}
+	/*debug*/printf("\tSAINDO ESTAT\n");
 	return;
 }
 
@@ -69,7 +124,8 @@ void imprimeLista(t_processo **cabeca){
     	/*debug:*/printf("no imprime lista\n");
     	for (j = 0; j < aux->pid.size(); ++j)
     	{
-			printf("\tProcesso\t%d\t deltaHora %u:%u x %u\t minstamp\t%u\n"
+			printf("\tProcesso\tjobId=%lu\tpid=%d\t deltaHora %u:%u x %u\t minstamp\t%u\n"
+						  ,aux->jobId
 						  ,aux->pid[j]
 						  ,aux->deltaHora
 						  ,aux->deltaMin
@@ -84,8 +140,8 @@ void imprimeLista(t_processo **cabeca){
 }
 
 // Funcao que remove a ficha da lista de processos na posicao int posicao
-int removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_no_vetor){
-	t_processo *aux = *lista;
+int removerLista(t_processo **listaProcesso,t_estatisticaProcesso **listaEstatistica, int numero_da_lista, int unsigned posicao_no_vetor){
+	t_processo *aux = *listaProcesso;
 	int i;
 	int retorno = 0;
 	/*debug:*/printf("no removerlista\n");
@@ -93,15 +149,17 @@ int removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_n
 	if(numero_da_lista != 0){
 		/*debug:*/printf("no if do remover\n");
 		//loop que vai para a posicao necessaria
-		for(aux = *lista, i = 0; i < numero_da_lista && aux->prox != NULL ; i++,aux = aux->prox){
+		for(aux = *listaProcesso, i = 0; i < (numero_da_lista - 1) && aux->prox != NULL ; i++,aux = aux->prox){
 			printf("for remover lista i =%d\n", i);
 		}
 		
 		// se for a ultima posicao, re
-		if (posicao_no_vetor == aux->pid.size() - 1 )
+		if (posicao_no_vetor == aux->prox->pid.size() - 1 )
 		{
 			/*debug*/ printf("if if\n");
 			//remove
+			//INSERE NA LISTA DE ESTATISTICA!
+			insereListaEstatistica(listaEstatistica,aux->prox);
 			aux->prox = aux->prox->prox;
 			retorno++;
 
@@ -109,7 +167,7 @@ int removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_n
 		else
 		{
 			/*debug*/  printf("if else\n");
-			aux->pid[posicao_no_vetor] = -1;
+			aux->prox->pid[posicao_no_vetor] = -1;
 		}
 		
 	}
@@ -120,7 +178,9 @@ int removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_n
 		{
 			/*debug*/  printf("else if\n");
 			// cabeca da lista eh agora outro
-			*lista = aux->prox;
+			//INSERE NA LISTA DE ESTATISTICA!
+			insereListaEstatistica(listaEstatistica,*listaProcesso);
+			*listaProcesso = aux->prox;
 			retorno++;
 
 		}
@@ -135,8 +195,8 @@ int removerLista(t_processo **lista, int numero_da_lista, int unsigned posicao_n
 }
 
 
-void retiraProcessosFinalizados(t_processo **cabeca,unsigned tamanhoLista){
-	t_processo *aux = *cabeca;
+void retiraProcessosFinalizados(t_processo **cabeca,t_estatisticaProcesso **listaEstatistica,unsigned tamanhoLista){
+	t_processo *aux ;
 	unsigned i;
 	unsigned j;  
 	int wait_pid_status = -1;
@@ -144,25 +204,26 @@ void retiraProcessosFinalizados(t_processo **cabeca,unsigned tamanhoLista){
 	printf("V#################VERIFICA SE REMOVE!\n");
 	while(flagRemover){
 		flagRemover = false;
-		for (i = 0; i < tamanhoLista && !flagRemover; ++i,aux= aux->prox)
+		for (i = 0,aux = *cabeca; i < tamanhoLista && !flagRemover; ++i,aux = aux->prox)
 		{
 			for (j = 0; j < aux->pid.size() && !flagRemover; ++j)
 			{
 				printf("\t______________________i = %d\tj=%d\n",i,j );
-				if (aux->pid[j] != 0){
+				if (aux->pid[j] > 0){
 					waitpid(aux->pid[j], &wait_pid_status, WNOHANG);
 				}
 				// Se um processo filho i terminou retira da lista
 				/*debug*/ printf("->>>>>>>>>>>>>>>%d\n", wait_pid_status);
-				if(wait_pid_status == 0){
+				if(WIFEXITED(wait_pid_status) ){
 					/*debug*/ printf("chamando a remover lista com i=%d, j=%u, do aux->pid[j] = %d\n", i,j, aux->pid[j] );
-					tamanhoLista -=removerLista(cabeca, i, j);	
+					tamanhoLista -=removerLista(cabeca,listaEstatistica, i, j);	
 					flagRemover = true;
 					wait_pid_status = -1;
+
 				}	
 			}
 		}
-		printf("\tFINAL DOS FORS FLAG = %d\ttamanhoLista\t%d\n",flagRemover,tamanhoLista);
+		printf("\tFINAL DOS FORS FLAG = %d\ttamanhoLista\t%d\ti=%d\tj=%d\n",flagRemover,tamanhoLista,i,j);
 		imprimeLista(cabeca);
 	}
 	printf("\tACABOU A VERIFICACAO\n");
@@ -174,8 +235,9 @@ void retiraProcessosFinalizados(t_processo **cabeca,unsigned tamanhoLista){
 
 /* PROGRAMA QUE VERIFICA A FILA DE MSGS, E TRATA A REQUISICAO!*/
 int main(){
-	t_processo *cabeca = NULL;
+	t_processo *cabecaProcesso = NULL;
 	t_processo *aux;
+	t_estatisticaProcesso *cabecaEstatistica = NULL;
 	t_msg msgrecebida;
 	std::time_t tempoCorrente;
 	struct tm * tempoInfo;
@@ -188,15 +250,21 @@ int main(){
 	unsigned alarm_return = 0;
 	int wait_pid_status = -1;
 	unsigned int debug_var;
+	bool flagPrimeiroRodou = false;
 	
 	signal(SIGALRM,dummy);				//ROTINA DE SIGNAL_ALRM
 	key_msg = msgget(10,0x1FF);			//CRIAR FILA DE MSG
 	while(1)
 	{
 		while(msgrcv(key_msg,&msgrecebida,size_msg,0,IPC_NOWAIT) > 0){			//LOOP DE RECEBER MENSAGENS E INSERIR NA FILA PROCESSSOS
-			insere_lista(&cabeca,&msgrecebida);
+			if(msgrecebida.mtype == TIPOCANCELAMENTO){	
+				//FAZ VERIFICACAO SE RETIRA PROCESSOS!
+				retiraProcessosFinalizados(&cabecaProcesso,&cabecaEstatistica,tamanhoLista);
+			}else{
+				insereListaProcesso(&cabecaProcesso,&msgrecebida);
+			}
 		}	
-		aux = cabeca;
+		aux = cabecaProcesso;
 		tamanhoLista = 0;
 		while(aux != NULL){
 			time(&tempoCorrente);
@@ -210,7 +278,7 @@ int main(){
 				if(ppid == 0){	
 					// /*debug*/ printf("end1\n");
 					kill(getpid(),SIGSTOP);
-					if(execl(aux->msg,aux->msg,EComercial, (char*)0) < 0){
+					if(execl(aux->executavel,aux->executavel,EComercial, (char*)0) < 0){
 						printf("Erro no execl! \n");
 						exit(1);
 					}
@@ -237,18 +305,20 @@ int main(){
 		
 		
 		// /*debug*/ printf("\tSAI DO LOOP DE EXEC\n");
-		imprimeLista(&cabeca);
+		imprimeLista(&cabecaProcesso);
 		// /*debug*/ printf("logo apos imprimir lista\n");
 		// round robin:
-		aux = cabeca;
+		aux = cabecaProcesso;
 		if(aux != NULL)
 		{
+			flagPrimeiroRodou = false;
 			// /*debug*/ printf("aux eh diferente de null!\n");
 			for( i = 0; i < tamanhoLista; i++)
 			{
 				/*debug*/ printf("i=%d, aux->pid.size()=%lu\n", i, aux->pid.size());
 				for (j = 0; j < aux->pid.size(); ++j)
 				{
+
 					// printf("\tProcesso\t%d\t deltaHora %u:%u x %u\t minstamp\t%u\tprox\t=%p\n"
 					// 				,aux->pid[j]
 					// 				,aux->deltaHora
@@ -258,8 +328,17 @@ int main(){
 					// 				,aux->prox);
 					printf("!\n");
 					
-					if(aux->pid[j] != 0)
+					if(aux->pid[j] > 0)
 					{
+						//Primeiro Processo de todos RODANDO?
+						if(!flagPrimeiroRodou){
+							/*debug*/ printf("0");
+							/*debug*/ printf("@@@@@@@@@@@@@@@@1 mandei SIGCONT para aux pid[%u]=%d\n", j, aux->pid[j]);
+							flagPrimeiroRodou =true;
+							kill(aux->pid[j],SIGCONT);
+							alarm(QUANTUM);
+							pause();
+						}
 						/*debug*/ printf("1");
 						/*debug*/ printf("@@@@@@@@@@@@@@@@1 mandei sigstop para aux pid[%u]=%d\n", j, aux->pid[j]);
 						kill(aux->pid[j],SIGSTOP);
@@ -279,7 +358,7 @@ int main(){
 						}
 						else	
 						{
-							if (aux->prox != NULL && aux->prox->pid[0] != 0)
+							if (aux->prox != NULL && aux->prox->pid[0] > 0)
 							{
 								/*debug*/ printf("3");
 								/*debug*/ printf("@@@@@@@@@@@@@@@@3 (else if)mandei SIGCONT para aux prox pid[0]=%d\n", aux->prox->pid[0]);
@@ -287,29 +366,26 @@ int main(){
 								kill(aux->prox->pid[0],SIGCONT);
 							}
 							// se entra no else eh porque chegou ao final, entao voltamos a dar um cont pra cabeca
-							else
-							{
-								/*debug*/ printf("4");
-								/*debug*/ printf("@@@@@@@@@@@@@@@@4 (else else)mandei SIGCONT para cabeca pid[0]=%d\n", cabeca->pid[0]);
-								// primeiro do vetor seguinte. o processo que está na proxima ficah do vetor
-								kill(cabeca->pid[0],SIGCONT);
-							}
+							// else
+							// {
+							// 	/*debug*/ printf("4");
+							// 	/*debug*/ printf("@@@@@@@@@@@@@@@@4 (else else)mandei SIGCONT para cabeca pid[0]=%d\n", cabeca->pid[0]);
+							// 	// primeiro do vetor seguinte. o processo que está na proxima ficah do vetor
+								
+							// }
 						}
-
+						/*debug*/ printf("#############################ALARME!         begin\n");		
+						alarm_return = alarm(QUANTUM);
+						pause();
+						/*debug*/ printf("alarm return:%u\n", alarm_return);
+						/*debug*/ printf("#############################ALARME!         end\n");	
 					}
-					/*debug*/ printf("#############################ALARME!         begin\n");		
-					alarm_return = alarm(2);
-					pause();
-					/*debug*/ printf("alarm return:%u\n", alarm_return);
-					/*debug*/ printf("#############################ALARME!         end\n");	
 				}
-
-
 				if(aux->prox != NULL)
 					aux = aux->prox;
 			}
 			//FAZ VERIFICACAO SE RETIRA PROCESSOS!
-			retiraProcessosFinalizados(&cabeca, tamanhoLista);
+			retiraProcessosFinalizados(&cabecaProcesso,&cabecaEstatistica,tamanhoLista);
 	
 		}	
 	}
